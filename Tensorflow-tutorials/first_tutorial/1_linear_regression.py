@@ -8,9 +8,12 @@ X = tf.placeholder("float")
 Y = tf.placeholder("float")
 
 w = tf.Variable(0.0, name="weights")
-init = tf.initialize_all_variables()
-#init= tf.global_variables_initializer() for new tf
-y_model = tf.mul(X, w)
+init = tf.global_variables_initializer()
+#init = tf.initialize_all_variables()
+#init= tf.initialize_all_variables() for new tf
+print( "Your Tensorflow version is "+ str(tf.__version__) +"If you need any error in tf.multiply function check code comment below"  )
+y_model = tf.multiply(X, w)
+# This was tf.mul for older versions 
 
 cost = (tf.pow(Y-y_model, 2))
 
