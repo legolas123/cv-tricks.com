@@ -9,7 +9,6 @@ Y = tf.placeholder("float")
 
 w = tf.Variable(0.0, name="weights")
 init = tf.global_variables_initializer()
-#init= tf.initialize_all_variables() for older tensorflow versions (before 0.11)
 print( "Your Tensorflow version is "+ str(tf.__version__) +".") 
 print("If you Tensorflow version is < 0.11, you will face error in tf.multiply function. Check code comment"  )
 y_model = tf.multiply(X, w)
