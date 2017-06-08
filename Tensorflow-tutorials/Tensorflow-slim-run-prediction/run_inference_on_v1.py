@@ -3,6 +3,10 @@ import os
 import tensorflow as tf
 import sys
 import urllib2
+##Matplotlib chooses Xwindows backend by default. You need to set matplotlib do not use Xwindows backend. Uncomment next 2 lines if you are running this on a server which doesn't have a display
+#import matplotlib
+#matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import sys

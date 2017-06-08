@@ -228,7 +228,7 @@ layer_fc2 = new_fc_layer(input=layer_fc1,
                      num_outputs=num_classes,
                      use_relu=False)
 
-y_pred = tf.nn.softmax(layer_fc2)
+y_pred = tf.nn.softmax(layer_fc2,name='y_pred')
 
 y_pred_cls = tf.argmax(y_pred, dimension=1)
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=layer_fc2,
@@ -239,9 +239,15 @@ optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cost)
 correct_prediction = tf.equal(y_pred_cls, y_true_cls)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+
 #session.run(tf.global_variables_initializer()) # for newer versions
 session.run(tf.initialize_all_variables()) # for older versions
 train_batch_size = batch_size
+
+### FOR TENSORBOARD TUTORIAL ONLY
+#writer= tf.summary.FileWriter('/tmp/tensorboard_tut')
+#writer.add_graph(session.graph)
+
 
 def print_progress(epoch, feed_dict_train, feed_dict_validate, val_loss):
     # Calculate the accuracy on the training-set.
@@ -285,7 +291,8 @@ def optimize(num_iterations):
         # TensorFlow assigns the variables in feed_dict_train
         # to the placeholder variables and then runs the optimizer.
         session.run(optimizer, feed_dict=feed_dict_train)
-        
+	saver = tf.train.Saver()
+        saver.save(session, 'my_test_model') 
 
         # Print status at end of each epoch (defined as full pass through training dataset).
         if i % int(data.train.num_examples/batch_size) == 0: 
