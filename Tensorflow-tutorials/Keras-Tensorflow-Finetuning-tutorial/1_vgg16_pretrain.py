@@ -17,7 +17,6 @@ from time import time
 #  3. Create VGG16 network graph(without top) and load imageNet pre-trained weights
 #  4. Add the top based on number of classes we have to the network created in step-3
 #  5. Specify the optimizer, loss etc and start the training
-#  6. Finally save the model
 ##################################################################################################################################
 ##################################################################################################################################
 
@@ -100,23 +99,20 @@ callbacks_list = [checkpoint,tensorboard]
 model = Model(inputs=base_model.input, outputs=predictions)
 
 #model.compile(loss="categorical_crossentropy", optimizer=optimizers.SGD(lr=0.001, momentum=0.9),metrics=["accuracy"])
-model.compile(loss="categorical_crossentropy", optimizer=optimizers.Adam(lr=0.0025),metrics=["accuracy"])
+model.compile(loss="categorical_crossentropy", optimizer=optimizers.Adam(),metrics=["accuracy"])
 #model.compile(loss="categorical_crossentropy", optimizer=optimizers.Adagrad(lr=0.01, epsilon=1e-08, decay=0.0),metrics=["accuracy"])
-#model.compile(loss="categorical_crossentropy", optimizer=optimizers.SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True),metrics=["accuracy"])
 
+num_training_img=1000
+num_validation_img=400
+stepsPerEpoch = num_training_img/batch_size
+validationSteps= num_validation_img/batch_size
 model.fit_generator(
         train_generator,
-        steps_per_epoch=100,
+        steps_per_epoch=stepsPerEpoch,
         epochs=20,
         callbacks = callbacks_list,
         validation_data = validation_generator,
-        validation_steps=20
+        validation_steps=validationSteps
         )
-print(model.summary)
-
-##### Step-6:
-############# Finally, we save the weights
-
-#model.save_weights('cv-tricks_fine_tuned_model.h5')
 
 

@@ -45,6 +45,7 @@ train_datagen = image.ImageDataGenerator(
         horizontal_flip=True)
 
 test_datagen = image.ImageDataGenerator(rescale=1. / 255)
+
 train_generator = train_datagen.flow_from_directory(
         args["train_dir"],
         target_size=(img_size, img_size),
@@ -103,13 +104,17 @@ model.compile(loss="categorical_crossentropy", optimizer=optimizers.SGD(lr=0.001
 #model.compile(loss="categorical_crossentropy", optimizer=optimizers.Adagrad(lr=0.01, epsilon=1e-08, decay=0.0),metrics=["accuracy"])
 #model.compile(loss="categorical_crossentropy", optimizer=optimizers.SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True),metrics=["accuracy"])
 
+num_training_img=1000
+num_validation_img=400
+stepsPerEpoch = num_training_img/batch_size
+validationSteps= num_validation_img/batch_size
 model.fit_generator(
         train_generator,
-        steps_per_epoch=100,
-        epochs=50,
+        steps_per_epoch=stepsPerEpoch,
+        epochs=20,
         callbacks = callbacks_list,
         validation_data = validation_generator,
-        validation_steps=40
+        validation_steps=validationSteps
         )
 
 
