@@ -99,10 +99,7 @@ model = Model(inputs=base_model.input, outputs=predictions)
 
 model.load_weights("cv-tricks_pretrained_model.h5")
 
-model.compile(loss="categorical_crossentropy", optimizer=optimizers.SGD(lr=0.001, momentum=0.9),metrics=["accuracy"])
-#model.compile(loss="categorical_crossentropy", optimizer=optimizers.Adam(lr=0.0025),metrics=["accuracy"])
-#model.compile(loss="categorical_crossentropy", optimizer=optimizers.Adagrad(lr=0.01, epsilon=1e-08, decay=0.0),metrics=["accuracy"])
-#model.compile(loss="categorical_crossentropy", optimizer=optimizers.SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True),metrics=["accuracy"])
+model.compile(loss="categorical_crossentropy", optimizer=optimizers.SGD(lr=0.0001, momentum=0.9),metrics=["accuracy"])
 
 num_training_img=1000
 num_validation_img=400
