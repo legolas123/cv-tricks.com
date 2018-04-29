@@ -39,7 +39,7 @@ y_pred = graph.get_tensor_by_name("y_pred:0")
 ## Let's feed the images to the input placeholders
 x= graph.get_tensor_by_name("x:0") 
 y_true = graph.get_tensor_by_name("y_true:0") 
-y_test_images = np.zeros((1, 2)) 
+y_test_images = np.zeros((1, len(os.listdir('training_data')))) 
 
 
 ### Creating the feed_dict that is required to be fed to calculate y_pred 
