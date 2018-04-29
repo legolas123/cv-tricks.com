@@ -5,6 +5,7 @@ from datetime import timedelta
 import math
 import random
 import numpy as np
+import os
 
 #Adding Seed so that random initialization is consistent
 from numpy.random import seed
@@ -16,7 +17,7 @@ set_random_seed(2)
 batch_size = 32
 
 #Prepare input data
-classes = ['dogs','cats']
+classes = os.listdir('training_data')
 num_classes = len(classes)
 
 # 20% of the data will automatically be used for validation
