@@ -16,7 +16,7 @@ To test the ROLO network you can use the sample videos in sample_videos folder o
 
     
 
->  python ROLO_test.py --path PATH_TO_VIDEO --v
+>  python ROLO_test.py --path PATH_TO_VIDEO --video
 
 where PATH_TO_VIDEO is the path to video file
 
