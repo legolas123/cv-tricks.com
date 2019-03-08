@@ -62,9 +62,9 @@ if __name__ == '__main__':
     # concatenate with original image i.e. L channel
     img_lab_out = np.concatenate((img_l[:,:,np.newaxis],ab_dec_us),axis=2) 
     # convert to BGR space from Lab space
-    img_lab_out = cv.cvtColor(img_lab_out, cv.COLOR_Lab2BGR)
+    img_bgr_out = cv.cvtColor(img_lab_out, cv.COLOR_Lab2BGR)
     # Clip and then rescale to 0-255
-    img_bgr_out = 255 * np.clip(, 0, 1)
+    img_bgr_out = 255 * np.clip(img_bgr_out, 0, 1)
     img_bgr_out = np.uint8(img_bgr_out)
     #concatenate input and output image to display
     con = np.hstack([frame,img_bgr_out]) 
