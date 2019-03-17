@@ -66,7 +66,7 @@ start_t = time.time()
 out = net.forward()
     
 print("time is ",time.time()-start_t)
-print(inp.shape)
+# print(inp.shape)
 kwinName="Pose Estimation Demo: Cv-Tricks.com"
 cv.namedWindow(kwinName, cv.WINDOW_AUTOSIZE)
 #assert(len(BODY_PARTS) == out.shape[1])
