@@ -1,4 +1,4 @@
-from keras.applications.imagenet_utils import _obtain_input_shape
+from keras_applications.imagenet_utils import _obtain_input_shape
 from keras import backend as K
 from keras.layers import Input, Convolution2D, MaxPooling2D, Activation, concatenate, Dropout, GlobalAveragePooling2D, \
     warnings
@@ -46,7 +46,7 @@ def SqueezeNet(input_tensor=None, input_shape=None,
                          '(pre-training on ImageNet).')
 
     if weights == 'imagenet' and classes != 1000:
-        raise ValueError('If using `weights` as imagenet with `include_top`'
+        raise ValueError('If using `weights` as imagenet with `include_top/require_flatten`'
                          ' as true, `classes` should be 1000')
 
 
@@ -54,7 +54,7 @@ def SqueezeNet(input_tensor=None, input_shape=None,
                                       default_size=227,
                                       min_size=48,
                                       data_format=K.image_data_format(),
-                                      include_top=True)
+                                      require_flatten=True)
 
     if input_tensor is None:
         img_input = Input(shape=input_shape)
