@@ -46,13 +46,14 @@ class OpenNsfwModel:
         x = self.input_tensor
 
         x = tf.pad(x, [[0, 0], [3, 3], [3, 3], [0, 0]], 'CONSTANT')
+
         x = self.__conv2d("conv_1", x, filter_depth=64,
                           kernel_size=7, stride=2, padding='valid')
 
         x = self.__batch_norm("bn_1", x)
         x = tf.nn.relu(x)
 
-        x = tf.layers.max_pooling2d(x, pool_size=3, strides=2, padding='same')
+        x = tf.keras.layers.MaxPool2D(pool_size = 3, strides = 2, padding = 'same')(x)
 
         x = self.__conv_block(stage=0, block=0, inputs=x,
                               filter_depths=[32, 32, 128],
@@ -97,8 +98,8 @@ class OpenNsfwModel:
                                   filter_depths=[256, 256, 1024],
                                   kernel_size=3)
 
-        x = tf.layers.average_pooling2d(x, pool_size=7, strides=1,
-                                        padding="valid", name="pool")
+        x = tf.keras.layers.AveragePooling2D(pool_size=7, strides=1,
+                                        padding="valid", name="pool")(x)
 
         x = tf.reshape(x, shape=(-1, 1024))
 
@@ -123,12 +124,12 @@ class OpenNsfwModel:
     """Layer creation and weight initialization
     """
     def __fully_connected(self, name, inputs, num_outputs):
-        return tf.layers.dense(
-            inputs=inputs, units=num_outputs, name=name,
+        return tf.keras.layers.Dense(
+            units=num_outputs, name=name,
             kernel_initializer=tf.constant_initializer(
                 self.__get_weights(name, "weights"), dtype=tf.float32),
             bias_initializer=tf.constant_initializer(
-                self.__get_weights(name, "biases"), dtype=tf.float32))
+                self.__get_weights(name, "biases"), dtype=tf.float32))(inputs)
 
     def __conv2d(self, name, inputs, filter_depth, kernel_size, stride=1,
                  padding="same", trainable=False):
@@ -147,19 +148,19 @@ class OpenNsfwModel:
                 raise Exception('unsupported kernel size for padding: "{}"'
                                 .format(kernel_size))
 
-        return tf.layers.conv2d(
-            inputs, filter_depth,
-            kernel_size=(kernel_size, kernel_size),
+        return tf.keras.layers.Conv2D(
+            filters = filter_depth,
+           kernel_size=(kernel_size, kernel_size),
             strides=(stride, stride), padding='valid',
             activation=None, trainable=trainable, name=name,
             kernel_initializer=tf.constant_initializer(
                 self.__get_weights(name, "weights"), dtype=tf.float32),
             bias_initializer=tf.constant_initializer(
-                self.__get_weights(name, "biases"), dtype=tf.float32))
+               self.__get_weights(name, "biases"), dtype=tf.float32))(inputs)       
 
     def __batch_norm(self, name, inputs, training=False):
-        return tf.layers.batch_normalization(
-            inputs, training=training, epsilon=self.bn_epsilon,
+        return tf.keras.layers.BatchNormalization(
+            trainable=training, epsilon=self.bn_epsilon,
             gamma_initializer=tf.constant_initializer(
                 self.__get_weights(name, "scale"), dtype=tf.float32),
             beta_initializer=tf.constant_initializer(
@@ -168,7 +169,7 @@ class OpenNsfwModel:
                 self.__get_weights(name, "mean"), dtype=tf.float32),
             moving_variance_initializer=tf.constant_initializer(
                 self.__get_weights(name, "variance"), dtype=tf.float32),
-            name=name)
+            name=name)(inputs)
 
     """ResNet blocks
     """
