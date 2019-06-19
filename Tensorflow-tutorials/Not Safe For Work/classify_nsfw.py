@@ -6,6 +6,9 @@ import tensorflow as tf
 from model import OpenNsfwModel, InputType
 from image_utils import create_tensorflow_image_loader
 from image_utils import create_yahoo_image_loader
+import cv2
+import time
+import os
 
 import numpy as np
 
@@ -41,8 +44,8 @@ def main(argv):
     with tf.Session() as sess:
 
         input_type = InputType[args.input_type.upper()]
-        model.build(weights_path=args.model_weights, input_type=input_type)
 
+        model.build(weights_path=args.model_weights, input_type=input_type)
         fn_load_image = None
 
         if input_type == InputType.TENSOR:
@@ -57,11 +60,7 @@ def main(argv):
         sess.run(tf.global_variables_initializer())
 
         image = fn_load_image(args.input_file)
-
-        predictions = \
-            sess.run(model.predictions,
-                     feed_dict={model.input: image})
-
+        predictions = sess.run(model.predictions, feed_dict={model.input: image})
         print("Results for '{}'".format(args.input_file))
         print("\tSFW score:\t{}\n\tNSFW score:\t{}".format(*predictions[0]))
 

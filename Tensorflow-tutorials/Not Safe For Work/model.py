@@ -131,10 +131,10 @@ class OpenNsfwModel:
             bias_initializer=tf.constant_initializer(
                 self.__get_weights(name, "biases"), dtype=tf.float32))(inputs)
 
-    def __conv2d(self, name, inputs, filter_depth, kernel_size, stride=1,
-                 padding="same", trainable=False):
-
+    def __conv2d(self, name, inputs, filter_depth, kernel_size, stride=1, padding="same", trainable=False):
         if padding.lower() == 'same' and kernel_size > 1:
+            #print("INPUT SHAPE: ", inputs.get_shape().as_list())
+            #print("KERNEL SIZE: ", kernel_size)
             if kernel_size > 1:
                 oh = inputs.get_shape().as_list()[1]
                 h = inputs.get_shape().as_list()[1]
@@ -144,6 +144,7 @@ class OpenNsfwModel:
                 inputs = tf.pad(inputs,
                                 [[0, 0], [p, p], [p, p], [0, 0]],
                                 'CONSTANT')
+                #print("PADDED INPUT SIZE: ", inputs.get_shape().as_list())
             else:
                 raise Exception('unsupported kernel size for padding: "{}"'
                                 .format(kernel_size))
