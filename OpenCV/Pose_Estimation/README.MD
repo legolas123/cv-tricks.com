@@ -3,7 +3,7 @@ Code for running OpenPose code for human pose estimation using deep learning in 
 First step is download the pretrained models:
 
 # On Ubuntu/Mac, run this command to download the models.
-sh get_models.sh
+sh get_model.sh
 
 Now, we can just run these models using the commands below. There are three pretrained models available each trained on a different dataset. In the blog, we have only shown MPI but you can run the other two as well. 
 
