@@ -1,0 +1,5 @@
+*.pth.tar
+*/*.pth.tar
+data/*
+data
+*__pycache__*
