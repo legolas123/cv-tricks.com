@@ -7,7 +7,7 @@ Binarized networks are infamous for not being very easy to get the network conve
 ## Accuracy on Imagenet Validation
 |  Network  | Top1(%) |
 |-----------|---------|
-| Resnet-18 |    56.8 |
+| Resnet-18 |    58.5 |
 
 ## Dependencies
 
