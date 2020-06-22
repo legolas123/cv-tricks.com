@@ -5,9 +5,11 @@ Xnornet algorithm(https://arxiv.org/abs/1603.05279) is one of the most cited wor
 Binarized networks are infamous for not being very easy to get the network converge. Hopefully this code will help you get started with network quantization
 
 ## Accuracy on Imagenet Validation
-|  Network  | Top1(%) |
-|-----------|---------|
-| Resnet-18 |    58.5 |
+|   Network   | Top-1(%) |
+|-------------|----------|
+| Real Valued |     69.3 |
+| Paper       |     57.1 |
+| This repo   |     59.9 |
 
 ## Dependencies
 
