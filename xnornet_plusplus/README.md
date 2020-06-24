@@ -9,8 +9,10 @@ Binarized networks are infamous for not being very easy to get the network conve
 |-------------|----------|
 | Real Valued |     69.3 |
 | Paper       |     57.1 |
-| This repo   |     59.9 |
+| This repo   |     56.8 |
+| This repo*  |     59.9 |
 
+ *Using real valued downsample
 ## Dependencies
 
  - Pytorch - 1.5.0 
