@@ -12,7 +12,7 @@ Binarized networks are infamous for not being very easy to get the network conve
 | This repo   |     56.8 |
 | This repo*  |     59.9 |
 
- *Using real valued downsample
+ *Using real valued downsample, but weights are binarized
 ## Dependencies
 
  - Pytorch - 1.5.0 
