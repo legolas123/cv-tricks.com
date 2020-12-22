@@ -10,7 +10,7 @@ Binarized networks are infamous for not being very easy to get the network conve
 | Real Valued |     69.3 |
 | Paper       |     57.1 |
 | This repo   |     56.8 |
-| This repo*  |     59.9 |
+| This repo*  |     57.6 |
 
  *Using real valued downsample, but weights are binarized
 ## Dependencies
@@ -24,9 +24,11 @@ Binarized networks are infamous for not being very easy to get the network conve
 
 Download imagenet dataset 
 Run the following command to train a resnet-18 network 
+    python main.py path_to_imagenet_dataset -a resnet18_preact_bin --lr 1e-1 --weight-decay 1e-5 --workers 16 --model_dir data/binary_out --batch-size 256 --quantize --optimizer sgd 
 
-    python main.py path_to_imagenet_dataset -a resnet18_preact_bin --lr 1e
-    -3 --optimizer adam --weight-decay 1e-5 --workers 16 --model_dir data/binary_1 --batch-size 512
+##Notes
+I have used cosine learning decay with sgd that enables this repo to get trained in 64 epochs. Normally binary networks are trained with adam using step learning rate decay which requires approx. 90 epoch to reach final accuracy. 
+
 ## Acknowledgement
 
 [https://github.com/jiecaoyu/XNOR-Net-PyTorch](https://github.com/jiecaoyu/XNOR-Net-PyTorch)

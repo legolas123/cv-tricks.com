@@ -1,4 +1,5 @@
 import argparse
+from models.resnet_preact_bin import BinConv2d, resnet18_preact_bin
 import os
 import shutil
 import time
@@ -19,6 +20,9 @@ import torch.multiprocessing as mp
 import quantization
 from utils import create_logger
 import logging
+import torch.nn.functional as F
+from models.resnet_preact_bin import BinConv2d
+import torch.optim.lr_scheduler as lr_scheduler
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -62,7 +66,7 @@ parser.add_argument('--model_dir',
 parser.add_argument('--quantize', dest='quantize', action='store_true',
                     help='whether to quantize model', default = False)
 
-
+scheduler =None
 best_prec1 = 0
 bin_op = None
 tb_writer = None
@@ -76,17 +80,27 @@ def main():
 
     model = torch.nn.DataParallel(model).cuda()
 
-    if args.quantize:
-        global bin_op
-        bin_op = quantization.Binarize(model)
+    # if args.quantize:
+    #     global bin_op
+    #     bin_op = quantization.Binarize(model)
 
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda()
 
+    param_grp_1 = []
+    for m in model.modules():
+        if isinstance(m,BinConv2d):
+            param_grp_1.append(m.weight)
+            param_grp_1.append(m.alpha)
+            param_grp_1.append(m.beta)
+            param_grp_1.append(m.gamma)
+    param_grp_1_ids = list(map(id, param_grp_1))
+    param_grp_2 = list(filter(lambda p: id(p) not in param_grp_1_ids, model.parameters()))
+
     if args.optimizer == "sgd":
         if args.quantize:
-            torch.optim.SGD([{'params': bin_op.param_grp_1}, 
-                {'params': bin_op.param_grp_2, 'weight_decay':args.weight_decay}],
+            optimizer = torch.optim.SGD([{'params': param_grp_1, 'weight_decay':0}, 
+                {'params': param_grp_2, 'weight_decay':args.weight_decay}],
                 lr = args.lr,momentum=args.momentum)
         else:
             optimizer = torch.optim.SGD(model.parameters(), args.lr,
@@ -94,14 +108,14 @@ def main():
                                 weight_decay=args.weight_decay)
     elif args.optimizer == "adam":
         if args.quantize:
-            torch.optim.Adam([{'params': bin_op.param_grp_1}, 
-                {'params': bin_op.param_grp_2, 'weight_decay':args.weight_decay}],
-                lr = args.lr)
+            optimizer = torch.optim.Adam([{'params': param_grp_1, 'weight_decay':0}, 
+                {'params': param_grp_2, 'weight_decay':args.weight_decay}], 
+                    lr=args.lr)
         else:
             optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
                                 weight_decay=args.weight_decay)
-
-
+    global scheduler
+    scheduler = lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 1, 2)
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
@@ -128,9 +142,9 @@ def main():
     train_dataset = datasets.ImageFolder(
         traindir,
         transforms.Compose([
-            #transforms.RandomResizedCrop(224),
-            transforms.Resize(256),
-            transforms.RandomCrop(224),
+            transforms.RandomResizedCrop(224),
+            #transforms.Resize(256),
+            #transforms.RandomCrop(224),
             transforms.ColorJitter(
                 brightness=0.4, contrast=0.4,
                 saturation=0.4),
@@ -175,13 +189,12 @@ def main():
 
 
     if args.evaluate:
-        validate(val_loader, model, criterion, epoch)
+        validate(val_loader, model, criterion, args.start_epoch)
         return
 
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch)
 
-        prec1 = validate(val_loader, model, criterion, epoch)
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch)
 
@@ -201,6 +214,7 @@ def main():
 
 
 def train(train_loader, model, criterion, optimizer, epoch):
+    global scheduler
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -218,15 +232,17 @@ def train(train_loader, model, criterion, optimizer, epoch):
         target = target.cuda(async=True)
         input_var = torch.autograd.Variable(input)
         target_var = torch.autograd.Variable(target)
-        if args.quantize:
-            bin_op.binarization()
+        # if args.quantize:
+        #     bin_op.binarization()
+
 
         # compute output
         output = model(input_var)
-        loss = criterion(output, target_var)
+        #loss = smooth_loss(output, target_var, 0.1)
+        loss = criterion(output[0]["logits"], target_var)
 
         # measure accuracy and record loss
-        prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+        prec1, prec5 = accuracy(output[0]["logits"].data, target, topk=(1, 5))
         #import pdb; pdb.set_trace()
         losses.update(loss.item(), input.size(0))
         top1.update(prec1[0], input.size(0))
@@ -235,11 +251,13 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
-        if args.quantize:
-            bin_op.restore()
-            bin_op.updateBinaryGradWeight()
+        # if args.quantize:
+        #     bin_op.restore()
+        #     bin_op.updateBinaryGradWeight()
 
         optimizer.step()
+
+        scheduler.step(epoch + i / len(train_loader))
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -270,8 +288,8 @@ def validate(val_loader, model, criterion, epoch):
     model.eval()
 
     end = time.time()
-    if args.quantize:
-        bin_op.binarization()
+    # if args.quantize:
+    #     bin_op.binarization()
     for i, (input, target) in enumerate(val_loader):
         target = target.cuda(async=True)
         input_var = torch.autograd.Variable(input, volatile=True)
@@ -279,10 +297,10 @@ def validate(val_loader, model, criterion, epoch):
 
         # compute output
         output = model(input_var)
-        loss = criterion(output, target_var)
+        loss = criterion(output[0]["logits"], target_var)
 
         # measure accuracy and record loss
-        prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+        prec1, prec5 = accuracy(output[0]["logits"].data, target, topk=(1, 5))
         losses.update(loss.item(), input.size(0))
         top1.update(prec1[0], input.size(0))
         top5.update(prec5[0], input.size(0))
@@ -299,8 +317,8 @@ def validate(val_loader, model, criterion, epoch):
                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                    i, len(val_loader), batch_time=batch_time, loss=losses,
                    top1=top1, top5=top5))
-    if args.quantize:
-        bin_op.restore()
+    # if args.quantize:
+    #     bin_op.restore()
 
     logging.info(' * Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'
           .format(top1=top1, top5=top5))
@@ -342,7 +360,6 @@ def adjust_learning_rate(optimizer, epoch):
     lr = args.lr * (0.1 ** (epoch // 30))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
-
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""

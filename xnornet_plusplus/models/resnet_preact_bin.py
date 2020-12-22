@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 #from .utils import load_state_dict_from_url
 from torchvision.models.utils import load_state_dict_from_url
-
+import torch.nn.functional as F
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152', 'resnext50_32x4d', 'resnext101_32x8d',
            'wide_resnet50_2', 'wide_resnet101_2']
@@ -43,13 +43,24 @@ class BinConv2d(nn.Module):
     def __init__(self, input_channels, output_channels,
             kernel_size=-1, stride=1, padding=0, groups=1, bias = False, dilation = 1, output_height=0, output_width=0):
         super(BinConv2d, self).__init__()
-        self.conv = nn.Conv2d(input_channels, output_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=groups, bias=bias, dilation=dilation)
+        #self.conv = nn.Conv2d(input_channels, output_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=groups, bias=bias, dilation=dilation)
+        self.stride = stride
+        self.padding = padding
+        self.shape = (output_channels, input_channels, kernel_size, kernel_size)
+        self.weight = nn.Parameter(torch.rand(self.shape) * 0.001, requires_grad=True)
         self.alpha = nn.Parameter(torch.ones(output_height).reshape(1,-1,1))
         self.beta = nn.Parameter(torch.ones(output_width).reshape(1,1,-1))
         self.gamma = nn.Parameter(torch.ones(output_channels).reshape(-1,1,1))
     def forward(self,x):
         x = binactive(x)
-        x = self.conv(x)
+        real_weight = self.weight
+        mean_weights = real_weight.mul(-1).mean(dim=1, keepdim=True).expand_as(self.weight).contiguous()
+
+        centered_weights = real_weight.add(mean_weights)
+        cliped_weights = torch.clamp(centered_weights, -1.0, 1.0)
+        signed_weights = torch.sign(centered_weights).detach() - cliped_weights.detach() + cliped_weights
+        binary_weights = signed_weights
+        x = F.conv2d(x, binary_weights, stride=self.stride, padding=self.padding)
         return x.mul(self.gamma).mul(self.beta).mul(self.alpha)
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1, binarize = False, output_height=0, output_width=0):
@@ -75,7 +86,7 @@ class BasicBlock(nn.Module):
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
                  base_width=64, dilation=1, norm_layer=None, output_height = 0, 
-                                        output_width = 0):
+                                        output_width = 0, binarize = False):
         super(BasicBlock, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -87,10 +98,11 @@ class BasicBlock(nn.Module):
         self.bn1 = norm_layer(inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.conv1 = conv3x3(inplanes, planes, stride, output_height = output_height, 
-                                        output_width = output_width, binarize = True)
+                                        output_width = output_width, binarize = binarize)
         self.bn2 = norm_layer(planes)
+        self.bn3 = norm_layer(planes)
         self.conv2 = conv3x3(planes, planes, output_height = output_height, 
-                                        output_width = output_width, binarize = True)
+                                        output_width = output_width, binarize = binarize)
         self.downsample = downsample
         self.stride = stride
 
@@ -104,6 +116,7 @@ class BasicBlock(nn.Module):
         out = self.relu(out)
         out = self.bn2(out)
         out = self.conv2(out)
+        out = self.bn3(out)
         out += identity
         out = self.relu(out)
         return out
@@ -112,7 +125,7 @@ class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None, output_height = 224, output_width = 224):
+                 norm_layer=None, output_height = 224, output_width = 224, binarize = False):
         super(ResNet, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -135,16 +148,16 @@ class ResNet(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0], output_height = output_height//4, 
-                                        output_width = output_width//4)
+                                        output_width = output_width//4, binarize = binarize)
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
                                        dilate=replace_stride_with_dilation[0], output_height = output_height//8, 
-                                        output_width = output_width//8)
+                                        output_width = output_width//8, binarize = binarize)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
                                        dilate=replace_stride_with_dilation[1], output_height = output_height//16, 
-                                        output_width = output_width//16)
+                                        output_width = output_width//16, binarize = binarize)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
                                        dilate=replace_stride_with_dilation[2], output_height = output_height//32, 
-                                        output_width = output_width//32)
+                                        output_width = output_width//32, binarize = binarize)
         self.bn5 = norm_layer(512*block.expansion)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
@@ -167,7 +180,7 @@ class ResNet(nn.Module):
                     nn.init.constant_(m.bn2.weight, 0)
 
     def _make_layer(self, block, planes, blocks, stride=1, dilate=False, 
-                    output_height = 224, output_width = 224):
+                    output_height = 224, output_width = 224, binarize = True):
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -179,40 +192,38 @@ class ResNet(nn.Module):
                 nn.AvgPool2d(kernel_size=2, stride=stride),
                 conv1x1(self.inplanes, planes * block.expansion, 1, output_height = output_height, 
                                         output_width = output_width, binarize = False),
-                #norm_layer(planes * block.expansion),
+                norm_layer(planes * block.expansion),
             )
 
         layers = []
         layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
                             self.base_width, previous_dilation, norm_layer, output_height = output_height, 
-                                        output_width = output_width))
+                                        output_width = output_width, binarize = binarize))
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
             layers.append(block(self.inplanes, planes, groups=self.groups,
                                 base_width=self.base_width, dilation=self.dilation,
                                 norm_layer=norm_layer, output_height = output_height, 
-                                        output_width = output_width))
+                                        output_width = output_width, binarize = binarize))
 
         return nn.Sequential(*layers)
 
     def _forward_impl(self, x):
         # See note [TorchScript super()]
+        all_outs = []
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
-
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        x = self.bn5(x)
-        x = self.relu(x)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
-        #x = self.fc(x)
+        all_outs.append(x)
 
-        return x
+        return all_outs
 
     def forward(self, x):
         return self._forward_impl(x)
